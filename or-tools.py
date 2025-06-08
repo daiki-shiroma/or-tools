@@ -29,11 +29,11 @@ def get_assignment_data():
             'PJ-2 (納期近)': 100,
             'PJ-3 (専門性要)': 120
         },
-        "worker_preferences": {  # 社員の希望度
-            ('Aさん', 'PJ-1 (重要度高)'): 2, ('Aさん', 'PJ-2 (納期近)'): 1, ('Aさん', 'PJ-3 (専門性要)'): 0,
-            ('Bさん', 'PJ-1 (重要度高)'): 1, ('Bさん', 'PJ-2 (納期近)'): 2, ('Bさん', 'PJ-3 (専門性要)'): 1,
-            ('Cさん', 'PJ-1 (重要度高)'): 0, ('Cさん', 'PJ-2 (納期近)'): 1, ('Cさん', 'PJ-3 (専門性要)'): 2,
-            ('Dさん', 'PJ-1 (重要度高)'): 1, ('Dさん', 'PJ-2 (納期近)'): 1, ('Dさん', 'PJ-3 (専門性要)'): 2
+        "worker_preferences": {  # 社員の希望度(5段階評価)
+            ('Aさん', 'PJ-1 (重要度高)'): 5, ('Aさん', 'PJ-2 (納期近)'): 3, ('Aさん', 'PJ-3 (専門性要)'): 1,
+            ('Bさん', 'PJ-1 (重要度高)'): 3, ('Bさん', 'PJ-2 (納期近)'): 5, ('Bさん', 'PJ-3 (専門性要)'): 4,
+            ('Cさん', 'PJ-1 (重要度高)'): 1, ('Cさん', 'PJ-2 (納期近)'): 3, ('Cさん', 'PJ-3 (専門性要)'): 5,
+            ('Dさん', 'PJ-1 (重要度高)'): 4, ('Dさん', 'PJ-2 (納期近)'): 3, ('Dさん', 'PJ-3 (専門性要)'): 5
         }
     }
 
@@ -58,10 +58,8 @@ def solve_personnel_assignment(data):
             x[(w, t)] = model.NewBoolVar(f'x_{w}_{t}')
 
     # --- 目的関数: 総コストの最小化 ---
-    PENALTY = 1000  # 希望度が0の場合のペナルティ
     total_cost_expr = sum(
-      costs[(w, t)] * x[(w, t)] +
-      (PENALTY if worker_preferences[(w, t)] == 0 else 0) * x[(w, t)]
+      costs[(w, t)] * x[(w, t)]
       for w in workers for t in tasks
     )
     model.Minimize(total_cost_expr)
