@@ -57,6 +57,17 @@ def solve_personnel_assignment(data):
         for t in tasks:
             x[(w, t)] = model.NewBoolVar(f'x_{w}_{t}')
 
+    # 残業可否変数: overtime_w は社員wが残業可能かどうかを示す二値変数
+    overtime = {}
+    for w in workers:
+        overtime[w] = model.NewBoolVar(f'overtime_{w}')
+
+    # 勤務時間制約変数: hours_w_t は社員wがタスクtに割り当てられる場合の勤務時間
+    hours = {}
+    for w in workers:
+        for t in tasks:
+            hours[(w, t)] = model.NewIntVar(0, 8, f'hours_{w}_{t}')  # 最大8時間勤務
+
     # --- 目的関数: 総コストの最小化 ---
     total_cost_expr = sum(
       costs[(w, t)] * x[(w, t)]
@@ -66,9 +77,25 @@ def solve_personnel_assignment(data):
 
     # --- 制約条件 ---
 
-    # 各タスクにはちょうど1人割り当てる
+    # 各タスクには複数人が割り当て可能
     for t in tasks:
-        model.Add(sum(x[(w, t)] for w in workers) == 1)
+        model.Add(sum(x[(w, t)] for w in workers) >= 1)  # 少なくとも1人が割り当てられる
+
+    # スキル合計が要求レベルを満たす制約
+    for t in tasks:
+        for skill_name, required_level in required_skills[t].items():
+            model.Add(
+                sum(worker_skills[w][skill_name] * x[(w, t)] for w in workers) >= required_level
+            )
+
+    # 勤務時間制約: 各社員の勤務時間が8時間を超えない
+    for w in workers:
+        model.Add(sum(hours[(w, t)] for t in tasks) <= 8)
+
+    # 残業可否制約: 残業可能な場合は勤務時間が10時間まで許容される
+    for w in workers:
+        model.Add(sum(hours[(w, t)] for t in tasks) <= 10).OnlyEnforceIf(overtime[w])
+        model.Add(sum(hours[(w, t)] for t in tasks) <= 8).OnlyEnforceIf(overtime[w].Not())
 
     # 各社員は最大で1つのタスクに割り当てる
     for w in workers:
