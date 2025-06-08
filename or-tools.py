@@ -34,6 +34,18 @@ def get_assignment_data():
             ('Bさん', 'PJ-1 (重要度高)'): 3, ('Bさん', 'PJ-2 (納期近)'): 5, ('Bさん', 'PJ-3 (専門性要)'): 4,
             ('Cさん', 'PJ-1 (重要度高)'): 1, ('Cさん', 'PJ-2 (納期近)'): 3, ('Cさん', 'PJ-3 (専門性要)'): 5,
             ('Dさん', 'PJ-1 (重要度高)'): 4, ('Dさん', 'PJ-2 (納期近)'): 3, ('Dさん', 'PJ-3 (専門性要)'): 5
+        },
+        "worker_overtime": {  # 社員ごとの残業可否
+            'Aさん': True,
+            'Bさん': False,
+            'Cさん': True,
+            'Dさん': False
+        },
+        "worker_hours": {  # 社員ごとの勤務可能時間
+            'Aさん': 8,
+            'Bさん': 6, # 時短勤務
+            'Cさん': 8,
+            'Dさん': 4,
         }
     }
 
@@ -49,6 +61,8 @@ def solve_personnel_assignment(data):
     worker_skills = data["worker_skills"]
     project_budgets = data["project_budgets"]
     worker_preferences = data["worker_preferences"]
+    worker_overtime = data["worker_overtime"]
+    worker_hours = data["worker_hours"]
 
     # --- 変数定義 ---
     # x_ij は社員iがタスクjに割り当てられる場合に1、そうでなければ0
@@ -88,14 +102,16 @@ def solve_personnel_assignment(data):
                 sum(worker_skills[w][skill_name] * x[(w, t)] for w in workers) >= required_level
             )
 
-    # 勤務時間制約: 各社員の勤務時間が8時間を超えない
+    # 勤務時間制約: 各社員の勤務時間がその社員の勤務可能時間を超えない
     for w in workers:
-        model.Add(sum(hours[(w, t)] for t in tasks) <= 8)
+        model.Add(sum(hours[(w, t)] for t in tasks) <= worker_hours[w])
 
     # 残業可否制約: 残業可能な場合は勤務時間が10時間まで許容される
     for w in workers:
-        model.Add(sum(hours[(w, t)] for t in tasks) <= 10).OnlyEnforceIf(overtime[w])
-        model.Add(sum(hours[(w, t)] for t in tasks) <= 8).OnlyEnforceIf(overtime[w].Not())
+        if worker_overtime[w]:
+            model.Add(sum(hours[(w, t)] for t in tasks) <= 10)
+        else:
+            model.Add(sum(hours[(w, t)] for t in tasks) <= worker_hours[w])
 
     # 各社員は最大で1つのタスクに割り当てる
     for w in workers:
