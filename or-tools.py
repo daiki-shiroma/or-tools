@@ -66,6 +66,15 @@ def solve_personnel_assignment(data):
 
     # --- 変数定義 ---
     # x_ij は社員iがタスクjに割り当てられる場合に1、そうでなければ0
+    # How To Use
+    '''
+    model.NewBoolVar(name) :
+    - 真偽値（0または1）を取るブール変数を作成
+    - 社員 A さんが PJ-1 に割り当てられるかどうか（1: 割り当て, 0: 割り当てない）
+    - 例
+      - x = model.NewBoolVar("x_Aさん_PJ1")
+    '''
+    
     x = {}
     for w in workers:
         for t in tasks:
@@ -77,19 +86,35 @@ def solve_personnel_assignment(data):
         overtime[w] = model.NewBoolVar(f'overtime_{w}')
 
     # 勤務時間制約変数: hours_w_t は社員wがタスクtに割り当てられる場合の勤務時間
+    # How To Use
+    '''
+    model.NewIntVar(lower, upper, name):
+    - 整数変数を定義（lower〜upperの範囲）
+    - 社員がタスクに何時間割かれるかを表現（最大8時間など）
+    - 例
+      - hours = model.NewIntVar(0, 8, "hours_A_PJ1")
+    '''
     hours = {}
     for w in workers:
         for t in tasks:
             hours[(w, t)] = model.NewIntVar(0, 8, f'hours_{w}_{t}')  # 最大8時間勤務
 
-    # --- 目的関数: 総コストの最小化 ---
-    total_cost_expr = sum(
-      costs[(w, t)] * x[(w, t)]
-      for w in workers for t in tasks
-    )
-    model.Minimize(total_cost_expr)
 
     # --- 制約条件 ---
+    # How To Use
+    '''
+    model.Add(condition):
+    - モデルに 制約条件 を追加
+    - 用途: 以下のような条件を表現
+	    - タスクごとに最低1人必要
+	    - 各社員は最大1つのプロジェクトのみ
+	    - スキル要件を満たしていること
+	    - 勤務時間が制限内に収まること
+	    - 希望度が0なら割り当て不可
+    - 例
+      - model.Add(x + y <= 10)
+      - model.Add(sum(x[(w, t)] for w in workers) >= 1)
+    '''
 
     # 各タスクには複数人が割り当て可能
     for t in tasks:
@@ -135,7 +160,23 @@ def solve_personnel_assignment(data):
             if worker_preferences[(w, t)] == 0:
                 model.Add(x[(w, t)] == 0)
 
+    # --- 目的関数: 総コストの最小化 ---
+    # How To Use
+    '''
+    model.Minimize(expression):
+    - 目的関数（最小化） を設定
+    - 総割り当てコストを最小にしたいという目標を設定
+    - 例
+      - model.Minimize(total_cost_expr)
+    '''
+    total_cost_expr = sum(
+      costs[(w, t)] * x[(w, t)]
+      for w in workers for t in tasks
+    )
+    model.Minimize(total_cost_expr)
+
     # --- 問題を解く ---
+    # CpSolverを呼び出す
     solver = cp_model.CpSolver()
     status = solver.Solve(model)
 
